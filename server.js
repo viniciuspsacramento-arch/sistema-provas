@@ -9,10 +9,79 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Auto-correção do Banco de Dados na inicialização
+async function verificarECorrigirBanco() {
+    console.log('🔧 Verificando integridade do banco de dados...');
+    try {
+        const connection = await promisePool.getConnection();
+
+        // View: v_questoes_por_topico
+        await connection.query(`
+            CREATE OR REPLACE VIEW v_questoes_por_topico AS
+            SELECT 
+                t.nome as topico,
+                COUNT(q.id) as total_questoes,
+                SUM(CASE WHEN q.dificuldade = 'facil' THEN 1 ELSE 0 END) as faceis,
+                SUM(CASE WHEN q.dificuldade = 'medio' THEN 1 ELSE 0 END) as medias,
+                SUM(CASE WHEN q.dificuldade = 'dificil' THEN 1 ELSE 0 END) as dificeis
+            FROM topicos t
+            LEFT JOIN questoes q ON t.id = q.topico_id
+            GROUP BY t.id, t.nome
+            HAVING total_questoes > 0
+            ORDER BY total_questoes DESC
+        `);
+        console.log('✅ View v_questoes_por_topico verificada/criada');
+
+        // View: v_desempenho_alunos
+        await connection.query(`
+            CREATE OR REPLACE VIEW v_desempenho_alunos AS
+            SELECT 
+                nome_aluno,
+                COUNT(*) as total_provas,
+                AVG(pontuacao) as media_pontuacao,
+                MAX(pontuacao) as melhor_pontuacao,
+                MIN(pontuacao) as pior_pontuacao
+            FROM tentativas
+            WHERE finalizado_em IS NOT NULL
+            GROUP BY nome_aluno
+            ORDER BY media_pontuacao DESC
+        `);
+        console.log('✅ View v_desempenho_alunos verificada/criada');
+
+        connection.release();
+        console.log('🚀 Banco de dados pronto e corrigido!');
+    } catch (error) {
+        console.error('❌ Erro na auto-correção do banco:', error);
+    }
+}
+
+// Inicializar verificação
+verificarECorrigirBanco();
+
 // Middlewares
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+// Rota de Diagnóstico (Healthcheck)
+app.get('/api/healthcheck', async (req, res) => {
+    try {
+        const [rows] = await promisePool.query('SELECT 1 as val');
+        res.json({
+            status: 'online',
+            database: 'connected',
+            timestamp: new Date(),
+            version: '1.0.1'
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            database: 'disconnected',
+            error: error.message
+        });
+    }
+});
+
 
 // Criar diretório de uploads se não existir
 const uploadDir = path.join(__dirname, 'public', 'uploads');
