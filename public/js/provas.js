@@ -10,23 +10,55 @@ let questoesSelecionadasIds = []; // Array ordenado de IDs
 // ============================================
 
 async function carregarProvas() {
+    const container = document.getElementById('listaProvas');
+    if (container) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                <div class="loading"></div>
+                <p class="mt-2 text-muted">Carregando provas...</p>
+            </div>
+        `;
+    }
+
     try {
         const response = await fetch(`${API_URL}/provas`);
-        provasCache = await response.json();
 
+        if (!response.ok) {
+            throw new Error(`Erro do servidor: ${response.status}`);
+        }
+
+        provasCache = await response.json();
         renderizarProvas(provasCache);
 
     } catch (error) {
         console.error('Erro ao carregar provas:', error);
-        mostrarErro('Erro ao carregar provas');
+        if (container) {
+            container.innerHTML = `
+                <div class="card" style="grid-column: 1 / -1; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--error);">
+                    <div style="text-align: center; padding: 1rem;">
+                        <h3 style="color: var(--error); margin-bottom: 0.5rem;">❌ Erro ao buscar provas</h3>
+                        <p>${error.message}</p>
+                        <button class="btn btn-sm btn-secondary mt-2" onclick="carregarProvas()">🔄 Tentar Novamente</button>
+                    </div>
+                </div>
+            `;
+        }
     }
 }
 
 function renderizarProvas(provas) {
     const container = document.getElementById('listaProvas');
 
-    if (provas.length === 0) {
-        container.innerHTML = '<p class="text-center" style="grid-column: 1 / -1; color: var(--text-muted);">Nenhuma prova cadastrada</p>';
+    if (!provas || provas.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius-lg);">
+                <div style="font-size: 2rem; margin-bottom: 1rem;">📭</div>
+                <p>Nenhuma prova cadastrada</p>
+                <button class="btn btn-primary mt-2" onclick="abrirModalNovaProva()">
+                    <span>➕</span> Criar Primeira Prova
+                </button>
+            </div>
+        `;
         return;
     }
 

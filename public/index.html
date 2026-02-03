@@ -17,39 +17,16 @@
         crossorigin="anonymous"></script>
 
     <!-- Script de detecção de modo - executa ANTES de renderizar o body -->
+    <!-- Script de detecção de modo removido para evitar tela branca. O controle será feito via CSS/JS no app.js -->
     <script>
+        // Apenas marca o modo no body para CSS
         (function () {
             var isAdmin = window.location.search.indexOf('admin') !== -1;
-
-            // Criar CSS dinâmico baseado no modo
-            var style = document.createElement('style');
-
-            if (!isAdmin) {
-                // MODO ALUNO: Esconder tudo exceto realizar-prova
-                style.textContent = `
-                    #mainNav { display: none !important; }
-                    #page-dashboard { display: none !important; }
-                    #page-questoes { display: none !important; }
-                    #page-provas { display: none !important; }
-                    #page-historico { display: none !important; }
-                    #page-realizar-prova { display: block !important; }
-                    .page.hidden#page-realizar-prova { display: block !important; }
-                    #modalLogin { display: none !important; }
-                `;
-                document.documentElement.classList.add('mode-aluno');
-            } else {
-                // MODO ADMIN:
-                // Inicialmente ESCONDE o dashboard até login
-                // Mostra o Modal de Login por padrão se não tiver token (será controlado via JS depois, mas por segurança começa ocultando dashboard)
-                style.textContent = `
-                    #mainNav { display: none; } /* Será exibido via JS após login */
-                    #page-dashboard { display: none; } /* Será exibido via JS após login */
-                    .page { display: none; }
-                `;
+            if (isAdmin) {
                 document.documentElement.classList.add('mode-admin');
+            } else {
+                document.documentElement.classList.add('mode-aluno');
             }
-
-            document.head.appendChild(style);
         })();
     </script>
 </head>

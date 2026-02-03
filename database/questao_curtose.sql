@@ -1,6 +1,6 @@
 USE banco_questoes_estatistica;
 
-SET @topico_descritiva = (SELECT id FROM topicos WHERE nome = 'Estatística descritiva (exploração e comparação de dados)' LIMIT 1);
+-- Variable removed
 
 -- =================================================================================
 -- Questão: Curtose - Coeficiente Percentílico (Nível Difícil)
@@ -37,7 +37,7 @@ Os resultados foram:
 **Filial B:** Q₁ = 8 | Q₃ = 12 | P₁₀ = 1 | P₉₀ = 25
 
 Sabendo que para a distribuição Normal K ≈ 0.263, classifique cada filial quanto à curtose e indique qual apresenta maior risco de tempos de atendimento extremamente longos.', 
-@topico_descritiva, 'dificil', 'multipla_escolha', 0);
+1, 'dificil', 'multipla_escolha', 0);
 
 SET @qid_curtose = LAST_INSERT_ID();
 
@@ -71,7 +71,7 @@ Utilizando o Coeficiente de Curtose Percentílico:
 K = IQR / [2 × (P₉₀ - P₁₀)]
 
 Onde valores menores de K indicam caudas mais pesadas (leptocúrtica), qual máquina apresenta maior probabilidade de produzir peças fora das especificações?', 
-@topico_descritiva, 'dificil', 'multipla_escolha', 0);
+1, 'dificil', 'multipla_escolha', 0);
 
 SET @qid_curtose2 = LAST_INSERT_ID();
 

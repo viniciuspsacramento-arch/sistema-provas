@@ -903,16 +903,22 @@ app.post('/api/tentativas/:id/finalizar', async (req, res) => {
             pontuacao = (totalAcertos / totalQuestoes) * 100;
         }
 
+        console.log(`📝 Finalizando prova ${id}: Acertos=${totalAcertos}/${totalQuestoes} (Score=${pontuacao})`);
+
         // 3. Atualizar pontuação na tentativa
-        await promisePool.query('UPDATE tentativas SET pontuacao = ? WHERE id = ?', [pontuacao, id]);
+        const [updateResult] = await promisePool.query('UPDATE tentativas SET pontuacao = ? WHERE id = ?', [pontuacao, id]);
+
+        if (updateResult.affectedRows === 0) {
+            throw new Error(`Tentativa ${id} não encontrada para atualização`);
+        }
 
         res.json({ message: 'Prova finalizada com sucesso', pontuacao, acertos: totalAcertos });
     } catch (error) {
-        console.error('Erro ao finalizar prova:', error);
+        console.error('❌ Erro CRÍTICO ao finalizar prova:', error);
         res.status(500).json({
             error: 'Erro ao finalizar prova',
             details: error.message || 'Erro desconhecido',
-            code: error.code
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
@@ -1153,28 +1159,57 @@ app.get('/api/tentativas/:id/analise', async (req, res) => {
 // ============================================
 
 // Dashboard com estatísticas gerais
+// Dashboard com estatísticas gerais
 app.get('/api/estatisticas/dashboard', async (req, res) => {
+    const connection = await promisePool.getConnection();
     try {
-        const [stats] = await promisePool.query(`
+        // Estatísticas Gerais (Query direta nas tabelas para garantir)
+        const [stats] = await connection.query(`
             SELECT 
                 (SELECT COUNT(*) FROM questoes) as total_questoes,
                 (SELECT COUNT(*) FROM provas) as total_provas,
                 (SELECT COUNT(*) FROM tentativas WHERE finalizado_em IS NOT NULL) as total_tentativas,
                 (SELECT COUNT(DISTINCT nome_aluno) FROM tentativas) as total_alunos,
-                (SELECT AVG(pontuacao) FROM tentativas WHERE finalizado_em IS NOT NULL) as media_geral
+                (SELECT IFNULL(AVG(pontuacao), 0) FROM tentativas WHERE finalizado_em IS NOT NULL) as media_geral
         `);
 
-        const [questoesPorTopico] = await promisePool.query('SELECT * FROM v_questoes_por_topico');
-        const [desempenhoAlunos] = await promisePool.query('SELECT * FROM v_desempenho_alunos ORDER BY media_pontuacao DESC LIMIT 10');
+        // Questões por tópico (Safely try view, fallback to empty array)
+        let questoesPorTopico = [];
+        try {
+            const [rows] = await connection.query('SELECT * FROM v_questoes_por_topico');
+            questoesPorTopico = rows;
+        } catch (e) {
+            console.warn('⚠️ Erro ao buscar v_questoes_por_topico (View pode estar faltando):', e.message);
+        }
+
+        // Top Alunos (Safely try view, fallback to empty array)
+        let desempenhoAlunos = [];
+        try {
+            const [rows] = await connection.query('SELECT * FROM v_desempenho_alunos ORDER BY media_pontuacao DESC LIMIT 10');
+            desempenhoAlunos = rows;
+        } catch (e) {
+            console.warn('⚠️ Erro ao buscar v_desempenho_alunos (View pode estar faltando):', e.message);
+        }
 
         res.json({
-            estatisticas_gerais: stats[0],
+            estatisticas_gerais: stats[0] || {
+                total_questoes: 0,
+                total_provas: 0,
+                total_tentativas: 0,
+                total_alunos: 0,
+                media_geral: 0
+            },
             questoes_por_topico: questoesPorTopico,
             top_alunos: desempenhoAlunos
         });
     } catch (error) {
-        console.error('Erro ao buscar estatísticas:', error);
-        res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+        console.error('❌ Erro CRÍTICO ao buscar estatísticas:', error);
+        res.status(500).json({
+            error: 'Erro ao buscar estatísticas',
+            details: error.message
+        });
+    } finally {
+        connection.release();
     }
 });
 

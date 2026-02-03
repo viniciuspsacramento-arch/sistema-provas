@@ -13,6 +13,26 @@ let tags = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 App iniciando...');
+
+    // Failsafe: Se por algum motivo o app travar, mostrar o conteúdo após 2s
+    setTimeout(() => {
+        const nav = document.getElementById('mainNav');
+        const dash = document.getElementById('page-dashboard');
+
+        // Se ainda estiver oculto e o usuário for admin
+        const isAdmin = new URLSearchParams(window.location.search).has('admin');
+        if (isAdmin && nav && nav.style.display === 'none') {
+            console.warn('⚠️ Failsafe ativado: Forçando exibição da UI');
+            nav.style.display = 'flex';
+            if (dash) dash.style.display = 'block';
+
+            // Garantir que não estamos em loading eterno
+            document.querySelectorAll('.loading').forEach(el => {
+                el.innerHTML = '<p class="text-danger">Tempo limite excedido. Tente recarregar.</p>';
+            });
+        }
+    }, 2000);
+
     inicializarApp();
 });
 
@@ -42,30 +62,16 @@ async function inicializarApp() {
             const nav = document.getElementById('mainNav');
             if (nav) nav.style.display = 'flex';
 
-            // Carregar dados
-            try {
-                await carregarTopicos();
-            } catch (e) {
-                console.error('Erro ao carregar tópicos:', e);
-            }
-
-            try {
-                await carregarTags();
-            } catch (e) {
-                console.error('Erro ao carregar tags:', e);
-            }
-
             configurarNavegacao();
 
-            try {
-                // Mostrar dashboard explicitamente
-                const dash = document.getElementById('page-dashboard');
-                if (dash) dash.style.display = 'block';
+            // Mostrar dashboard explicitamente (antes de carregar dados)
+            const dash = document.getElementById('page-dashboard');
+            if (dash) dash.style.display = 'block';
 
-                carregarDashboard();
-            } catch (e) {
-                console.error('Erro ao carregar dashboard:', e);
-            }
+            // Carregar dados em paralelo para não travar a UI
+            carregarDashboard().catch(e => console.error('Erro dashboard:', e));
+            carregarTopicos().catch(e => console.error('Erro tópicos:', e));
+            carregarTags().catch(e => console.error('Erro tags:', e));
 
         } else {
             // MODO_ALUNO: Apenas realizar prova
@@ -145,6 +151,23 @@ async function realizarLogin(event) {
             body: JSON.stringify({ password: senhaInput.value })
         });
 
+        if (!response.ok) {
+            // Tenta ler o erro como texto primeiro para diagnosticar
+            const text = await response.text();
+            let errorMessage = `Erro ${response.status}`;
+
+            try {
+                const json = JSON.parse(text);
+                if (json.error) errorMessage = json.error;
+            } catch (e) {
+                // Se não for JSON (ex: erro 500 do express em HTML), loga no console
+                console.error('Resposta do servidor não é JSON:', text);
+                if (response.status === 404) errorMessage = 'API não encontrada (404)';
+                if (response.status === 500) errorMessage = 'Erro interno do servidor (500)';
+            }
+            throw new Error(errorMessage);
+        }
+
         const data = await response.json();
 
         if (data.success) {
@@ -152,17 +175,14 @@ async function realizarLogin(event) {
             sessionStorage.setItem('adminToken', data.token);
             location.reload(); // Recarrega para entrar no fluxo autenticado
         } else {
-            // Erro de senha
-            erroDiv.textContent = 'Senha incorreta';
-            erroDiv.style.display = 'block';
-            senhaInput.value = '';
-            senhaInput.focus();
-            botao.disabled = false;
-            botao.textContent = 'Entrar';
+            throw new Error(data.error || 'Credenciais inválidas');
         }
     } catch (error) {
-        console.error('Erro no login:', error);
-        erroDiv.textContent = 'Erro de conexão';
+        console.error('Erro detalhado no login:', error);
+        erroDiv.textContent = error.message === 'Failed to fetch'
+            ? 'Não foi possível conectar ao servidor. Verifique se ele está rodando.'
+            : `Erro: ${error.message}`;
+
         erroDiv.style.display = 'block';
         botao.disabled = false;
         botao.textContent = 'Entrar';
@@ -230,95 +250,130 @@ function navegarPara(pagina) {
 // ============================================
 
 async function carregarDashboard() {
-    try {
-        const response = await fetch(`${API_URL}/estatisticas/dashboard`);
-        const data = await response.json();
+    const statsGrid = document.getElementById('statsGrid');
+    const questoesPorTopico = document.getElementById('questoesPorTopico');
+    const topAlunos = document.getElementById('topAlunos');
 
-        // Renderizar estatísticas gerais
-        const statsGrid = document.getElementById('statsGrid');
-        const stats = data.estatisticas_gerais;
-
+    // Estado de Loading Visual
+    if (statsGrid) {
         statsGrid.innerHTML = `
-            <div class="stat-card">
-                <div class="stat-icon">📝</div>
-                <div class="stat-value">${stats.total_questoes || 0}</div>
-                <div class="stat-label">Questões</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📋</div>
-                <div class="stat-value">${stats.total_provas || 0}</div>
-                <div class="stat-label">Provas</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">✍️</div>
-                <div class="stat-value">${stats.total_tentativas || 0}</div>
-                <div class="stat-label">Tentativas</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">👥</div>
-                <div class="stat-value">${stats.total_alunos || 0}</div>
-                <div class="stat-label">Alunos</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📊</div>
-                <div class="stat-value">${stats.media_geral !== null ? Number(stats.media_geral).toFixed(1) : '0.0'}</div>
-                <div class="stat-label">Média Geral</div>
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+                <div class="loading"></div>
+                <p class="mt-2 text-muted">Carregando estatísticas...</p>
             </div>
         `;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/estatisticas/dashboard`);
+
+        if (!response.ok) {
+            throw new Error(`Erro do servidor: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Verificar por erro retornado na API
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        // Renderizar estatísticas gerais
+        const stats = data.estatisticas_gerais || {};
+
+        if (statsGrid) {
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-value">${stats.total_questoes || 0}</div>
+                    <div class="stat-label">Questões</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-value">${stats.total_provas || 0}</div>
+                    <div class="stat-label">Provas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✍️</div>
+                    <div class="stat-value">${stats.total_tentativas || 0}</div>
+                    <div class="stat-label">Tentativas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value">${stats.total_alunos || 0}</div>
+                    <div class="stat-label">Alunos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-value">${stats.media_geral ? Number(stats.media_geral).toFixed(1) : '0.0'}</div>
+                    <div class="stat-label">Média Geral</div>
+                </div>
+            `;
+        }
 
         // Renderizar questões por tópico
-        const questoesPorTopico = document.getElementById('questoesPorTopico');
-        if (data.questoes_por_topico && data.questoes_por_topico.length > 0) {
-            questoesPorTopico.innerHTML = data.questoes_por_topico.map(t => `
-                <div style="padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                        <strong>${t.topico}</strong>
-                        <span class="badge badge-primary">${t.total_questoes}</span>
+        if (questoesPorTopico) {
+            if (data.questoes_por_topico && data.questoes_por_topico.length > 0) {
+                questoesPorTopico.innerHTML = data.questoes_por_topico.map(t => `
+                    <div style="padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <strong>${t.topico}</strong>
+                            <span class="badge badge-primary">${t.total_questoes}</span>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; font-size: 0.875rem;">
+                            <span class="badge badge-facil">${t.faceis} fáceis</span>
+                            <span class="badge badge-medio">${t.medias} médias</span>
+                            <span class="badge badge-dificil">${t.dificeis} difíceis</span>
+                        </div>
                     </div>
-                    <div style="display: flex; gap: 0.5rem; font-size: 0.875rem;">
-                        <span class="badge badge-facil">${t.faceis} fáceis</span>
-                        <span class="badge badge-medio">${t.medias} médias</span>
-                        <span class="badge badge-dificil">${t.dificeis} difíceis</span>
-                    </div>
-                </div>
-            `).join('');
-        } else {
-            questoesPorTopico.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">Nenhuma questão cadastrada ainda.</p>';
+                `).join('');
+            } else {
+                questoesPorTopico.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">Nenhuma questão cadastrada por tópico.</p>';
+            }
         }
 
         // Renderizar top alunos
-        const topAlunos = document.getElementById('topAlunos');
-        if (data.top_alunos && data.top_alunos.length > 0) {
-            topAlunos.innerHTML = `
-                <table style="width: 100%;">
-                    <thead>
-                        <tr>
-                            <th>Aluno</th>
-                            <th>Provas</th>
-                            <th>Média</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.top_alunos.map((aluno, index) => `
+        if (topAlunos) {
+            if (data.top_alunos && data.top_alunos.length > 0) {
+                topAlunos.innerHTML = `
+                    <table style="width: 100%;">
+                        <thead>
                             <tr>
-                                <td>
-                                    ${index < 3 ? ['🥇', '🥈', '🥉'][index] : ''} 
-                                    ${aluno.nome_aluno}
-                                </td>
-                                <td>${aluno.total_provas}</td>
-                                <td><strong>${aluno.media_pontuacao !== null ? Number(aluno.media_pontuacao).toFixed(1) : '0.0'}</strong></td>
+                                <th>Aluno</th>
+                                <th>Provas</th>
+                                <th>Média</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        } else {
-            topAlunos.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">Nenhuma tentativa registrada ainda.</p>';
+                        </thead>
+                        <tbody>
+                            ${data.top_alunos.map((aluno, index) => `
+                                <tr>
+                                    <td>
+                                        ${index < 3 ? ['🥇', '🥈', '🥉'][index] : ''} 
+                                        ${aluno.nome_aluno}
+                                    </td>
+                                    <td>${aluno.total_provas}</td>
+                                    <td><strong>${aluno.media_pontuacao !== null ? Number(aluno.media_pontuacao).toFixed(1) : '0.0'}</strong></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } else {
+                topAlunos.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">Nenhuma tentativa registrada para ranking.</p>';
+            }
         }
 
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
-        mostrarErro('Erro ao carregar dashboard');
+        if (statsGrid) {
+            statsGrid.innerHTML = `
+                <div class="card" style="grid-column: 1/-1; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--error);">
+                    <h3 style="color: var(--error); margin-bottom: 0.5rem;">❌ Erro ao carregar dados</h3>
+                    <p>${error.message}</p>
+                    <button class="btn btn-sm btn-secondary mt-2" onclick="carregarDashboard()">🔄 Tentar Novamente</button>
+                </div>
+            `;
+        }
     }
 }
 

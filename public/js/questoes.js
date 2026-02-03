@@ -14,6 +14,16 @@ async function carregarQuestoes() {
 }
 
 async function filtrarQuestoes() {
+    const container = document.getElementById('listaQuestoes');
+    if (container) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                <div class="loading"></div>
+                <p class="mt-2 text-muted">Carregando questões...</p>
+            </div>
+        `;
+    }
+
     try {
         const topico = document.getElementById('filtroTopico').value;
         const dificuldade = document.getElementById('filtroDificuldade').value;
@@ -25,21 +35,43 @@ async function filtrarQuestoes() {
         if (tipo) url += `tipo=${tipo}&`;
 
         const response = await fetch(url);
-        questoesCache = await response.json();
 
+        if (!response.ok) {
+            throw new Error(`Erro do servidor: ${response.status}`);
+        }
+
+        questoesCache = await response.json();
         renderizarQuestoes(questoesCache);
 
     } catch (error) {
         console.error('Erro ao carregar questões:', error);
-        mostrarErro('Erro ao carregar questões: ' + (error.message || error));
+        if (container) {
+            container.innerHTML = `
+                <div class="card" style="grid-column: 1 / -1; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--error);">
+                    <div style="text-align: center; padding: 1rem;">
+                        <h3 style="color: var(--error); margin-bottom: 0.5rem;">❌ Erro ao buscar questões</h3>
+                        <p>${error.message}</p>
+                        <button class="btn btn-sm btn-secondary mt-2" onclick="filtrarQuestoes()">🔄 Tentar Novamente</button>
+                    </div>
+                </div>
+            `;
+        }
     }
 }
 
 function renderizarQuestoes(questoes) {
     const container = document.getElementById('listaQuestoes');
 
-    if (questoes.length === 0) {
-        container.innerHTML = '<p class="text-center" style="grid-column: 1 / -1; color: var(--text-muted);">Nenhuma questão encontrada</p>';
+    if (!questoes || questoes.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius-lg);">
+                <div style="font-size: 2rem; margin-bottom: 1rem;">📝</div>
+                <p>Nenhuma questão encontrada</p>
+                <button class="btn btn-primary mt-2" onclick="abrirModalNovaQuestao()">
+                    <span>➕</span> Criar Primeira Questão
+                </button>
+            </div>
+        `;
         return;
     }
 
