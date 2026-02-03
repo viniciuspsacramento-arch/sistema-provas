@@ -15,6 +15,24 @@ async function verificarECorrigirBanco() {
     try {
         const connection = await promisePool.getConnection();
 
+        // 1. Verificar se coluna 'matricula' existe na tabela 'tentativas'
+        try {
+            const [cols] = await connection.query("SHOW COLUMNS FROM tentativas LIKE 'matricula'");
+            if (cols.length === 0) {
+                console.log('⚠️ Coluna matricula não encontrada. Adicionando...');
+                await connection.query("ALTER TABLE tentativas ADD COLUMN matricula VARCHAR(20) NOT NULL AFTER nome_aluno");
+                console.log('✅ Coluna matricula adicionada!');
+
+                // Adicionar índice UNIQUE para garantir uma tentativa por matrícula (opcional, mas bom pra garantir integridade)
+                // Vamos criar um índice UNIQUE em (matricula) para que o aluno só possa fazer UMA prova no total
+                // Se fosse uma prova por TIPO, seria (matricula, prova_id). Mas o requisito é "uma única vez por matrícula".
+                await connection.query("CREATE UNIQUE INDEX idx_matricula_unica ON tentativas(matricula)");
+                console.log('✅ Índice único por matrícula criado!');
+            }
+        } catch (e) {
+            console.error('Erro na migração de matricula:', e.message);
+        }
+
         // View: v_questoes_por_topico
         await connection.query(`
             CREATE OR REPLACE VIEW v_questoes_por_topico AS
@@ -641,23 +659,44 @@ app.delete('/api/provas/:id', async (req, res) => {
 // ============================================
 
 // Iniciar tentativa de prova
+// Iniciar tentativa de prova
 app.post('/api/tentativas', async (req, res) => {
     try {
-        const { prova_id, nome_aluno } = req.body;
+        const { prova_id, nome_aluno, matricula } = req.body;
+
+        if (!matricula) {
+            return res.status(400).json({ error: 'Matrícula é obrigatória' });
+        }
+
+        // Verificar se a matrícula já realizou alguma prova
+        const [existing] = await promisePool.query(
+            'SELECT id FROM tentativas WHERE matricula = ?',
+            [matricula]
+        );
+
+        if (existing.length > 0) {
+            return res.status(403).json({
+                error: 'Esta matrícula já realizou uma prova. Não é permitido fazer novamente.'
+            });
+        }
 
         const [result] = await promisePool.query(
-            'INSERT INTO tentativas (prova_id, nome_aluno) VALUES (?, ?)',
-            [prova_id, nome_aluno]
+            'INSERT INTO tentativas (prova_id, nome_aluno, matricula) VALUES (?, ?, ?)',
+            [prova_id, nome_aluno, matricula]
         );
 
         res.status(201).json({
             id: result.insertId,
             prova_id,
             nome_aluno,
+            matricula,
             iniciado_em: new Date()
         });
     } catch (error) {
         console.error('Erro ao iniciar tentativa:', error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(403).json({ error: 'Esta matrícula já realizou uma prova.' });
+        }
         res.status(500).json({ error: 'Erro ao iniciar tentativa' });
     }
 });

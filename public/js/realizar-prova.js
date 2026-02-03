@@ -2,6 +2,13 @@
 // REALIZAR PROVA COM PROTEÇÕES ANTI-CÓPIA
 // ============================================
 
+// Mapeamento de Provas (Hardcoded conforme regra de negócio)
+const PROVAS_MAP = {
+    A: 6,   // Final 0, 3, 6, 9
+    B: 9,   // Final 1, 4, 7
+    C: 10   // Final 2, 5, 8
+};
+
 let provaAtual = null;
 let tentativaAtual = null;
 let respostasProva = {};
@@ -16,45 +23,62 @@ let trocasAba = 0;
 // ============================================
 
 async function carregarProvasDisponiveis() {
-    try {
-        const response = await fetch(`${API_URL}/provas`);
-        const provas = await response.json();
+    // Deprecated: Seleção agora é por matrícula
+    console.log('Modo de seleção por matrícula ativo.');
+}
 
-        const container = document.getElementById('listaProvasRealizar');
+// ============================================
+// SELEÇÃO POR MATRÍCULA
+// ============================================
 
-        if (provas.length === 0) {
-            container.innerHTML = '<p class="text-center" style="grid-column: 1 / -1; color: var(--text-muted);">Nenhuma prova disponível</p>';
-            return;
-        }
+function acessarProvaPorMatricula() {
+    const nomeInput = document.getElementById('nomeAluno');
+    const matriculaInput = document.getElementById('matriculaAluno');
 
-        container.innerHTML = provas.map(p => `
-            <div class="card">
-                <h4>${p.titulo_publico || p.titulo}</h4>
-                ${p.descricao ? `<p style="color: var(--text-secondary); font-size: 0.9rem;">${p.descricao}</p>` : ''}
-                
-                <div style="margin: 1rem 0; font-size: 0.875rem; color: var(--text-muted);">
-                    <div>📝 ${p.total_questoes} questões</div>
-                    ${p.tempo_limite ? `<div>⏱️ ${p.tempo_limite} minutos</div>` : '<div>⏱️ Sem limite de tempo</div>'}
-                </div>
-                
-                <button class="btn btn-primary" onclick="iniciarProva(${p.id})">
-                    Iniciar Prova
-                </button>
-            </div>
-        `).join('');
+    const nome = nomeInput.value.trim();
+    const matricula = matriculaInput.value.replace(/\D/g, ''); // Remove não-números
 
-    } catch (error) {
-        console.error('Erro ao carregar provas:', error);
-        mostrarErro('Erro ao carregar provas disponíveis');
+    // Validação
+    if (!nome) {
+        mostrarErro('Por favor, digite seu nome completo');
+        nomeInput.focus();
+        return;
     }
+
+    if (!matricula || matricula.length < 5) { // Mínimo de dígitos razoável
+        mostrarErro('Por favor, digite uma matrícula válida (apenas números)');
+        matriculaInput.focus();
+        return;
+    }
+
+    // Lógica do último dígito
+    const ultimoDigito = parseInt(matricula.slice(-1));
+    let provaId;
+    let tipoProva;
+
+    if ([0, 3, 6, 9].includes(ultimoDigito)) {
+        provaId = PROVAS_MAP.A;
+        tipoProva = 'A';
+    } else if ([1, 4, 7].includes(ultimoDigito)) {
+        provaId = PROVAS_MAP.B;
+        tipoProva = 'B';
+    } else { // 2, 5, 8
+        provaId = PROVAS_MAP.C;
+        tipoProva = 'C';
+    }
+
+    console.log(`Matrícula: ${matricula} (Final ${ultimoDigito}) -> Prova ${tipoProva} (ID ${provaId})`);
+
+    iniciarProva(provaId, nome, matricula);
 }
 
 // ============================================
 // INICIAR PROVA
 // ============================================
 
-async function iniciarProva(provaId) {
-    const nomeAluno = document.getElementById('nomeAluno').value.trim();
+async function iniciarProva(provaId, nomeAlunoParam = null, matriculaParam = null) {
+    const nomeAluno = nomeAlunoParam || document.getElementById('nomeAluno').value.trim();
+    const matricula = matriculaParam;
 
     if (!nomeAluno) {
         mostrarErro('Por favor, digite seu nome antes de iniciar a prova');
@@ -79,9 +103,16 @@ async function iniciarProva(provaId) {
             },
             body: JSON.stringify({
                 prova_id: provaId,
-                nome_aluno: nomeAluno
+                nome_aluno: nomeAluno,
+                matricula: matricula
             })
         });
+
+        if (responseTentativa.status === 403) {
+            const data = await responseTentativa.json();
+            mostrarErro(data.error || 'Você já realizou esta prova.');
+            return;
+        }
 
         tentativaAtual = await responseTentativa.json();
 
@@ -100,6 +131,9 @@ async function iniciarProva(provaId) {
         // Esconder seleção e mostrar prova
         document.getElementById('selecionarProva').classList.add('hidden');
         document.getElementById('realizandoProva').classList.remove('hidden');
+
+        // Esconder cabeçalho para foco total
+        document.querySelector('header').classList.add('hidden');
 
         // Ativar proteções
         ativarProtecoes(nomeAluno);
@@ -492,6 +526,9 @@ function voltarParaSelecao() {
     document.getElementById('realizandoProva').classList.add('hidden');
     document.getElementById('realizandoProva').innerHTML = '';
     document.getElementById('selecionarProva').classList.remove('hidden');
+
+    // Mostrar cabeçalho novamente
+    document.querySelector('header').classList.remove('hidden');
     document.getElementById('nomeAluno').value = '';
     carregarProvasDisponiveis();
 }
