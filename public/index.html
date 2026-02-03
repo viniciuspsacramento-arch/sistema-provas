@@ -34,13 +34,17 @@
                     #page-historico { display: none !important; }
                     #page-realizar-prova { display: block !important; }
                     .page.hidden#page-realizar-prova { display: block !important; }
+                    #modalLogin { display: none !important; }
                 `;
                 document.documentElement.classList.add('mode-aluno');
             } else {
-                // MODO ADMIN: Mostrar navegação e dashboard
+                // MODO ADMIN:
+                // Inicialmente ESCONDE o dashboard até login
+                // Mostra o Modal de Login por padrão se não tiver token (será controlado via JS depois, mas por segurança começa ocultando dashboard)
                 style.textContent = `
-                    #mainNav { display: flex !important; }
-                    #page-dashboard { display: block !important; }
+                    #mainNav { display: none; } /* Será exibido via JS após login */
+                    #page-dashboard { display: none; } /* Será exibido via JS após login */
+                    .page { display: none; }
                 `;
                 document.documentElement.classList.add('mode-admin');
             }
@@ -437,6 +441,25 @@
             <div id="resultadoContent">
                 <!-- Resultado carregado dinamicamente -->
             </div>
+        </div>
+    </div>
+
+    <!-- Modal de Login (Admin) -->
+    <div id="modalLogin" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
+            <h2 class="mb-3">Área Restrita</h2>
+            <p class="text-muted mb-4">Digite a senha de administrador para continuar.</p>
+
+            <form id="formLogin" onsubmit="realizarLogin(event)">
+                <div class="form-group mb-3">
+                    <input type="password" id="senhaAdmin" class="form-input" placeholder="Senha" required autofocus>
+                </div>
+                <div id="loginError" class="text-danger mb-3" style="display: none;">Senha incorreta</div>
+                <button type="submit" class="btn btn-primary w-100">
+                    Entrar
+                </button>
+            </form>
         </div>
     </div>
 

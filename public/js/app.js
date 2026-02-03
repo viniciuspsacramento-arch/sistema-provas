@@ -23,9 +23,26 @@ async function inicializarApp() {
         console.log('📋 Modo:', isAdmin ? 'ADMIN' : 'ALUNO');
 
         if (isAdmin) {
-            // MODO_ADMIN: Carregar tudo normalmente
+            // MODO_ADMIN: Verificar Autenticação
+            const token = sessionStorage.getItem('adminToken');
+
+            if (!token) {
+                console.log('🔒 Admin não autenticado. Exibindo login.');
+                document.body.classList.add('mode-admin-locked');
+                const modal = document.getElementById('modalLogin');
+                if (modal) modal.style.display = 'flex';
+                return; // Interrompe carregamento do dashboard
+            }
+
+            // MODO_ADMIN (Autenticado): Carregar tudo
+            console.log('🔓 Admin autenticado. Carregando dashboard...');
             document.body.classList.add('mode-admin');
 
+            // Mostrar navegação
+            const nav = document.getElementById('mainNav');
+            if (nav) nav.style.display = 'flex';
+
+            // Carregar dados
             try {
                 await carregarTopicos();
             } catch (e) {
@@ -41,14 +58,15 @@ async function inicializarApp() {
             configurarNavegacao();
 
             try {
+                // Mostrar dashboard explicitamente
+                const dash = document.getElementById('page-dashboard');
+                if (dash) dash.style.display = 'block';
+
                 carregarDashboard();
             } catch (e) {
                 console.error('Erro ao carregar dashboard:', e);
             }
 
-            // Garantir que nav esteja visível
-            const nav = document.getElementById('mainNav');
-            if (nav) nav.style.display = 'flex';
         } else {
             // MODO_ALUNO: Apenas realizar prova
             document.body.classList.add('mode-aluno');
@@ -99,6 +117,55 @@ async function inicializarApp() {
         console.log('✅ App inicializado com sucesso');
     } catch (error) {
         console.error('❌ Erro fatal ao inicializar app:', error);
+    }
+}
+
+// ============================================
+// AUTENTICAÇÃO ADMIN
+// ============================================
+
+async function realizarLogin(event) {
+    event.preventDefault();
+
+    const senhaInput = document.getElementById('senhaAdmin');
+    const erroDiv = document.getElementById('loginError');
+    const botao = event.target.querySelector('button');
+
+    if (!senhaInput) return;
+
+    // Resetar estado
+    erroDiv.style.display = 'none';
+    botao.disabled = true;
+    botao.textContent = 'Verificando...';
+
+    try {
+        const response = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: senhaInput.value })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Sucesso!
+            sessionStorage.setItem('adminToken', data.token);
+            location.reload(); // Recarrega para entrar no fluxo autenticado
+        } else {
+            // Erro de senha
+            erroDiv.textContent = 'Senha incorreta';
+            erroDiv.style.display = 'block';
+            senhaInput.value = '';
+            senhaInput.focus();
+            botao.disabled = false;
+            botao.textContent = 'Entrar';
+        }
+    } catch (error) {
+        console.error('Erro no login:', error);
+        erroDiv.textContent = 'Erro de conexão';
+        erroDiv.style.display = 'block';
+        botao.disabled = false;
+        botao.textContent = 'Entrar';
     }
 }
 

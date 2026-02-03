@@ -82,6 +82,22 @@ app.get('/api/healthcheck', async (req, res) => {
     }
 });
 
+// ============================================
+// AUTENTICAÇÃO
+// ============================================
+
+app.post('/api/auth/login', (req, res) => {
+    const { password } = req.body;
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+    if (password === adminPassword) {
+        res.json({ success: true, token: 'admin-session-active' });
+    } else {
+        res.status(401).json({ success: false, error: 'Senha incorreta' });
+    }
+});
+
+
 
 // Criar diretório de uploads se não existir
 const uploadDir = path.join(__dirname, 'public', 'uploads');
