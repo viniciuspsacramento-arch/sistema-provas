@@ -9,10 +9,17 @@ let dbConfig = {
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
     ssl: { rejectUnauthorized: false } // Required for Railway Cloud DB
+};
 
-if(process.env.DATABASE_URL) {
-        console.log('Usando DATABASE_URL para conexão');
-dbConfig.uri = process.env.DATABASE_URL;
+if (process.env.DATABASE_URL) {
+    console.log('Usando DATABASE_URL para conexão');
+    // Parse the DATABASE_URL (formato: mysql://user:password@host:port/database)
+    const url = new URL(process.env.DATABASE_URL);
+    dbConfig.host = url.hostname;
+    dbConfig.user = url.username;
+    dbConfig.password = url.password;
+    dbConfig.database = url.pathname.substring(1); // Remove the leading '/'
+    dbConfig.port = url.port || 3306;
 } else {
     dbConfig.host = process.env.MYSQLHOST || process.env.DB_HOST || 'localhost';
     dbConfig.user = process.env.MYSQLUSER || process.env.DB_USER || 'root';

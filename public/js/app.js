@@ -3,10 +3,7 @@
 // ============================================
 
 // Configuração da API
-// Em produção (Railway), usa o caminho relativo. Localmente, funciona igual se servido pelo mesmo host.
-// Configuração da API
-// Em produção (Railway), usa o caminho relativo. Localmente, funciona igual se servido pelo mesmo host.
-window.API_URL = '/api'; // Expose globally to ensure access in other scripts of the same page
+window.API_URL = '/api';
 let topicos = [];
 let tags = [];
 
@@ -15,20 +12,96 @@ let tags = [];
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 App iniciando...');
     inicializarApp();
 });
 
 async function inicializarApp() {
-    // Carregar dados iniciais
-    await carregarTopicos();
-    await carregarTags();
+    try {
+        // Verificar modo de acesso
+        const isAdmin = new URLSearchParams(window.location.search).has('admin');
+        console.log('📋 Modo:', isAdmin ? 'ADMIN' : 'ALUNO');
 
-    // Configurar navegação
-    configurarNavegacao();
+        if (isAdmin) {
+            // MODO_ADMIN: Carregar tudo normalmente
+            document.body.classList.add('mode-admin');
 
-    // Carregar página inicial
-    carregarDashboard();
+            try {
+                await carregarTopicos();
+            } catch (e) {
+                console.error('Erro ao carregar tópicos:', e);
+            }
+
+            try {
+                await carregarTags();
+            } catch (e) {
+                console.error('Erro ao carregar tags:', e);
+            }
+
+            configurarNavegacao();
+
+            try {
+                carregarDashboard();
+            } catch (e) {
+                console.error('Erro ao carregar dashboard:', e);
+            }
+
+            // Garantir que nav esteja visível
+            const nav = document.getElementById('mainNav');
+            if (nav) nav.style.display = 'flex';
+        } else {
+            // MODO_ALUNO: Apenas realizar prova
+            document.body.classList.add('mode-aluno');
+            console.log('👨‍🎓 Iniciando modo aluno...');
+
+            // Esconder navegação
+            const nav = document.getElementById('mainNav');
+            if (nav) nav.style.display = 'none';
+
+            // Mostrar apenas a página de realizar prova
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.add('hidden');
+            });
+
+            const pageRealizarProva = document.getElementById('page-realizar-prova');
+            if (pageRealizarProva) {
+                pageRealizarProva.classList.remove('hidden');
+                console.log('✅ Página de realizar prova exibida');
+            }
+
+            // Carregar lista de provas disponíveis
+            try {
+                console.log('📥 Carregando provas disponíveis...');
+                await carregarProvasDisponiveis();
+                console.log('✅ Provas carregadas com sucesso');
+            } catch (e) {
+                console.error('❌ Erro ao carregar provas:', e);
+                // Mostrar mensagem de erro amigável
+                const container = document.getElementById('listaProvasRealizar');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                            <p style="color: var(--error); font-size: 1.1rem; margin-bottom: 1rem;">
+                                ❌ Erro ao carregar provas
+                            </p>
+                            <p style="color: var(--text-muted);">
+                                Tente recarregar a página. Se o problema persistir, contate o administrador.
+                            </p>
+                            <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 1rem;">
+                                🔄 Recarregar Página
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        console.log('✅ App inicializado com sucesso');
+    } catch (error) {
+        console.error('❌ Erro fatal ao inicializar app:', error);
+    }
 }
+
 
 // ============================================
 // NAVEGAÇÃO
