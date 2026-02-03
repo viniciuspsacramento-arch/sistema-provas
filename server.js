@@ -66,6 +66,71 @@ async function verificarECorrigirBanco() {
         `);
         console.log('✅ View v_desempenho_alunos verificada/criada');
 
+        // ============================================
+        // PROCEDURES
+        // ============================================
+
+        // Procedure: calcular_pontuacao
+        try {
+            await connection.query('DROP PROCEDURE IF EXISTS calcular_pontuacao');
+            await connection.query(`
+                CREATE PROCEDURE calcular_pontuacao(IN p_tentativa_id INT)
+                BEGIN
+                    DECLARE v_total_questoes INT;
+                    DECLARE v_respostas_corretas DECIMAL(10,2);
+                    DECLARE v_pontuacao DECIMAL(5,2);
+                    
+                    -- Contar total de questões da prova
+                    SELECT COUNT(*) INTO v_total_questoes
+                    FROM provas_questoes pq
+                    JOIN tentativas t ON t.prova_id = pq.prova_id
+                    WHERE t.id = p_tentativa_id;
+                    
+                    -- Calcular acertos
+                    SELECT COUNT(*) INTO v_respostas_corretas
+                    FROM respostas r
+                    WHERE r.tentativa_id = p_tentativa_id AND r.correta = TRUE;
+                    
+                    -- Calcular pontuação
+                    IF v_total_questoes > 0 THEN
+                        SET v_pontuacao = (v_respostas_corretas / v_total_questoes) * 100;
+                    ELSE
+                        SET v_pontuacao = 0;
+                    END IF;
+                    
+                    -- Atualizar tentativa
+                    UPDATE tentativas 
+                    SET pontuacao = v_pontuacao
+                    WHERE id = p_tentativa_id;
+                END
+            `);
+            console.log('✅ Procedure calcular_pontuacao recriada');
+        } catch (e) {
+            console.error('⚠️ Erro ao recriar procedure:', e.message);
+        }
+
+        // ============================================
+        // TRIGGERS
+        // ============================================
+
+        // Trigger: tr_verificar_resposta_correta
+        try {
+            await connection.query('DROP TRIGGER IF EXISTS tr_verificar_resposta_correta');
+            await connection.query(`
+                CREATE TRIGGER tr_verificar_resposta_correta
+                BEFORE INSERT ON respostas
+                FOR EACH ROW
+                BEGIN
+                    IF NEW.alternativa_id IS NOT NULL THEN
+                        SET NEW.correta = (SELECT correta FROM alternativas WHERE id = NEW.alternativa_id);
+                    END IF;
+                END
+            `);
+            console.log('✅ Trigger tr_verificar_resposta_correta recriada');
+        } catch (e) {
+            console.error('⚠️ Erro ao recriar trigger:', e.message);
+        }
+
         connection.release();
         console.log('🚀 Banco de dados pronto e corrigido!');
     } catch (error) {
