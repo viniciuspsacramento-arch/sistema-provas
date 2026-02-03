@@ -44,4 +44,4 @@ pool.getConnection((err, connection) => {
     }
 });
 
-module.exports = { pool, promisePool };
+module.exports = { pool, promisePool, dbConfig };

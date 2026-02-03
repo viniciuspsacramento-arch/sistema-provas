@@ -3,7 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { promisePool } = require('./db');
+const { promisePool, dbConfig } = require('./db');
 require('dotenv').config();
 
 const app = express();
@@ -86,9 +86,19 @@ app.get('/api/healthcheck', async (req, res) => {
 // AUTENTICAÇÃO
 // ============================================
 
+
+
 app.post('/api/auth/login', (req, res) => {
     const { password } = req.body;
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+    // Prioridade:
+    // 1. Variável de ambiente específica (ADMIN_PASSWORD)
+    // 2. Senha do banco de dados (dbConfig.password) - Útil no Railway
+    // 3. Fallback inseguro ('admin123')
+    const adminPassword = process.env.ADMIN_PASSWORD || dbConfig.password || 'admin123';
+
+    // Log apenas para debug (remover em produção real se fosse crítico)
+    // console.log('Tentativa de login. Senha esperada (length):', adminPassword.length);
 
     if (password === adminPassword) {
         res.json({ success: true, token: 'admin-session-active' });
