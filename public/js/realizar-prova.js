@@ -228,7 +228,7 @@ async function registrarTrocaAba() {
             method: 'POST'
         });
 
-        mostrarAviso(`⚠️ ATENÇÃO: Troca de aba detectada! (${trocasAba}x)\nIsso será registrado no resultado.`);
+        // Aviso visual removido conforme solicitação
 
     } catch (error) {
         console.error('Erro ao registrar troca de aba:', error);
@@ -330,7 +330,7 @@ function renderizarQuestao() {
         <div class="card" style="max-width: 900px; margin: 0 auto;">
             <div class="flex-between mb-3">
                 <h3>Questão ${questaoAtualIndex + 1} de ${provaAtual.questoes.length}</h3>
-                <span class="badge ${getDificuldadeBadge(questao.dificuldade)}">${getDificuldadeTexto(questao.dificuldade)}</span>
+                <!-- Badge de dificuldade removido -->
             </div>
             
             <div class="mb-4">
