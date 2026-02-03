@@ -400,7 +400,7 @@ async function carregarHistorico() {
                 <td>${formatarData(t.iniciado_em)}</td>
                 <td>
                     ${t.pontuacao !== null ?
-                `<strong style="color: ${getPontuacaoCor(t.pontuacao)}">${t.pontuacao.toFixed(1)}</strong>` :
+                `<strong style="color: ${getPontuacaoCor(t.pontuacao)}">${t.pontuacao/10}</strong>` :
                 '<span class="badge badge-primary">Em andamento</span>'
             }
                 </td>
@@ -457,7 +457,7 @@ async function verResultado(tentativaId) {
             
             <div class="stats-grid mb-3">
                 <div class="stat-card">
-                    <div class="stat-value" style="color: ${getPontuacaoCor(resultado.pontuacao)}">${resultado.pontuacao.toFixed(1)}</div>
+                    <div class="stat-value" style="color: ${getPontuacaoCor(resultado.pontuacao)}">${resultado.pontuacao/10}</div>
                     <div class="stat-label">Pontuação</div>
                 </div>
                 <div class="stat-card">

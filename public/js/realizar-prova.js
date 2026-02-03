@@ -492,38 +492,6 @@ function mostrarResultadoProva(resultado) {
     container.innerHTML = `
         <div class="card" style="max-width: 800px; margin: 0 auto; text-align: center;">
             <h2 style="margin-bottom: 2rem;">🎉 Prova Finalizada!</h2>
-            
-            <div class="stats-grid mb-4">
-                <div class="stat-card">
-                    <div class="stat-value" style="color: ${getPontuacaoCor(resultado.pontuacao)}">${resultado.pontuacao.toFixed(1)}</div>
-                    <div class="stat-label">Pontuação</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${resultado.estatisticas.corretas}/${resultado.estatisticas.total_questoes}</div>
-                    <div class="stat-label">Acertos</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${resultado.trocas_aba}</div>
-                    <div class="stat-label">Trocas de Aba</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${formatarTempo(resultado.tempo_total)}</div>
-                    <div class="stat-label">Tempo Total</div>
-                </div>
-            </div>
-            
-            ${resultado.pontuacao >= 70 ?
-            '<p style="font-size: 1.2rem; color: var(--success);">✓ Parabéns! Você foi aprovado!</p>' :
-            '<p style="font-size: 1.2rem; color: var(--warning);">Continue estudando!</p>'
-        }
-            
-            <div class="flex gap-2 mt-4" style="justify-content: center;">
-                <button class="btn btn-secondary" onclick="verResultado(${resultado.id})">
-                    Ver Respostas Detalhadas
-                </button>
-                <button class="btn btn-primary" onclick="voltarParaSelecao()">
-                    Fazer Outra Prova
-                </button>
             </div>
         </div>
     `;
