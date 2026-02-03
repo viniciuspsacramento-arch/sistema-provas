@@ -444,7 +444,7 @@ async function finalizarProvaComum() {
         const tempoTotal = Math.floor((Date.now() - tempoInicio) / 1000);
 
         // Finalizar no servidor
-        await fetch(`${API_URL}/tentativas/${tentativaAtual.id}/finalizar`, {
+        const responseFinalizar = await fetch(`${API_URL}/tentativas/${tentativaAtual.id}/finalizar`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -453,6 +453,11 @@ async function finalizarProvaComum() {
                 tempo_total: tempoTotal
             })
         });
+
+        if (!responseFinalizar.ok) {
+            const errorData = await responseFinalizar.json();
+            throw new Error(errorData.details || errorData.error || 'Erro ao finalizar prova no servidor');
+        }
 
         // Parar timer
         pararTimer();

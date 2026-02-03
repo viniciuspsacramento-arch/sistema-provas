@@ -33,6 +33,26 @@ async function verificarECorrigirBanco() {
             console.error('Erro na migração de matricula:', e.message);
         }
 
+        // 2. Verificar se coluna 'correta' existe na tabela 'respostas'
+        try {
+            const [colsRes] = await connection.query("SHOW COLUMNS FROM respostas LIKE 'correta'");
+            if (colsRes.length === 0) {
+                console.log('⚠️ Coluna correta não encontrada em respostas. Adicionando...');
+                await connection.query("ALTER TABLE respostas ADD COLUMN correta BOOLEAN DEFAULT NULL AFTER resposta_texto");
+
+                // Tentar popular com base nas alternativas existentes
+                console.log('🔄 Populando coluna correta com dados existentes...');
+                await connection.query(`
+                    UPDATE respostas r 
+                    JOIN alternativas a ON r.alternativa_id = a.id 
+                    SET r.correta = a.correta
+                `);
+                console.log('✅ Coluna correta adicionada e populada!');
+            }
+        } catch (e) {
+            console.error('Erro na migração de correta:', e.message);
+        }
+
         // View: v_questoes_por_topico
         await connection.query(`
             CREATE OR REPLACE VIEW v_questoes_por_topico AS
@@ -870,10 +890,14 @@ app.post('/api/tentativas/:id/finalizar', async (req, res) => {
         // 3. Atualizar pontuação na tentativa
         await promisePool.query('UPDATE tentativas SET pontuacao = ? WHERE id = ?', [pontuacao, id]);
 
-        res.json({ message: 'Prova finalizada com sucesso' });
+        res.json({ message: 'Prova finalizada com sucesso', pontuacao, acertos: totalAcertos });
     } catch (error) {
         console.error('Erro ao finalizar prova:', error);
-        res.status(500).json({ error: 'Erro ao finalizar prova' });
+        res.status(500).json({
+            error: 'Erro ao finalizar prova',
+            details: error.message || 'Erro desconhecido',
+            code: error.code
+        });
     }
 });
 
