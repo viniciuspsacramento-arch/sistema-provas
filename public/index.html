@@ -16,6 +16,40 @@
         integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05"
         crossorigin="anonymous"></script>
 
+    <!-- Script de detecção de modo - executa ANTES de renderizar o body -->
+    <script>
+        (function () {
+            var isAdmin = window.location.search.indexOf('admin') !== -1;
+
+            // Criar CSS dinâmico baseado no modo
+            var style = document.createElement('style');
+
+            if (!isAdmin) {
+                // MODO ALUNO: Esconder tudo exceto realizar-prova
+                style.textContent = `
+                    #mainNav { display: none !important; }
+                    #page-dashboard { display: none !important; }
+                    #page-questoes { display: none !important; }
+                    #page-provas { display: none !important; }
+                    #page-historico { display: none !important; }
+                    #page-realizar-prova { display: block !important; }
+                    .page.hidden#page-realizar-prova { display: block !important; }
+                `;
+                document.documentElement.classList.add('mode-aluno');
+            } else {
+                // MODO ADMIN: Mostrar navegação e dashboard
+                style.textContent = `
+                    #mainNav { display: flex !important; }
+                    #page-dashboard { display: block !important; }
+                `;
+                document.documentElement.classList.add('mode-admin');
+            }
+
+            document.head.appendChild(style);
+        })();
+    </script>
+</head>
+
 <body>
     <!-- Header -->
     <header>
@@ -407,10 +441,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/js/app.js?v=6"></script>
-    <script src="/js/questoes.js?v=6"></script>
-    <script src="/js/provas.js?v=6"></script>
-    <script src="/js/realizar-prova.js?v=6"></script>
+    <script src="/js/app.js?v=7"></script>
+    <script src="/js/questoes.js?v=7"></script>
+    <script src="/js/provas.js?v=7"></script>
+    <script src="/js/realizar-prova.js?v=7"></script>
 </body>
 
 </html>
