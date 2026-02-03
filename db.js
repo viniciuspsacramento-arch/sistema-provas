@@ -2,18 +2,26 @@ const mysql = require('mysql2');
 require('dotenv').config();
 
 // Criar pool de conexões
-const pool = mysql.createPool({
-    host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
-    user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
-    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
-    database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'banco_questoes_estatistica',
-    port: process.env.MYSQLPORT || process.env.DB_PORT || 3306,
+let dbConfig = {
     waitForConnections: true,
     connectionLimit: 30,
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 0
-});
+};
+
+if (process.env.DATABASE_URL) {
+    console.log('Usando DATABASE_URL para conexão');
+    dbConfig.uri = process.env.DATABASE_URL;
+} else {
+    dbConfig.host = process.env.MYSQLHOST || process.env.DB_HOST || 'localhost';
+    dbConfig.user = process.env.MYSQLUSER || process.env.DB_USER || 'root';
+    dbConfig.password = process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '';
+    dbConfig.database = process.env.MYSQLDATABASE || process.env.DB_NAME || 'banco_questoes_estatistica';
+    dbConfig.port = process.env.MYSQLPORT || process.env.DB_PORT || 3306;
+}
+
+const pool = mysql.createPool(dbConfig);
 
 // Versão com promises
 const promisePool = pool.promise();
