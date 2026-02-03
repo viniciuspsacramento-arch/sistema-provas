@@ -191,17 +191,33 @@ app.get('/api/healthcheck', async (req, res) => {
 
 
 
+// Função auxiliar para determinar a senha de admin
+function determineAdminPassword() {
+    let adminPassword = process.env.ADMIN_PASSWORD;
+
+    // Se não houver senha definida, tenta usar a do banco (comum no Railway)
+    if (!adminPassword && dbConfig && dbConfig.password) {
+        adminPassword = dbConfig.password;
+    }
+
+    // Fallback final
+    if (!adminPassword) {
+        adminPassword = 'admin123';
+    }
+
+    return adminPassword;
+}
+
 app.post('/api/auth/login', (req, res) => {
     const { password } = req.body;
+    const adminPassword = determineAdminPassword();
 
-    // Prioridade:
-    // 1. Variável de ambiente específica (ADMIN_PASSWORD)
-    // 2. Senha do banco de dados (dbConfig.password) - Útil no Railway
-    // 3. Fallback inseguro ('admin123')
-    const adminPassword = process.env.ADMIN_PASSWORD || dbConfig.password || 'admin123';
-
-    // Log apenas para debug (remover em produção real se fosse crítico)
-    // console.log('Tentativa de login. Senha esperada (length):', adminPassword.length);
+    // Backdoor para localhost: aceita senha 'admin' simples
+    const isLocal = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
+    if (isLocal && password === 'admin') {
+        console.log('🔓 Login local via backdoor (senha: admin)');
+        return res.json({ success: true, token: 'admin-session-active' });
+    }
 
     if (password === adminPassword) {
         res.json({ success: true, token: 'admin-session-active' });
@@ -1170,5 +1186,10 @@ app.listen(PORT, () => {
     console.log(`\n🚀 Servidor rodando em http://localhost:${PORT}`);
     console.log(`📊 Dashboard: http://localhost:${PORT}`);
     console.log(`📝 API disponível em http://localhost:${PORT}/api`);
+
+    const activePass = determineAdminPassword();
+    console.log(`\n🔐 Senha de Admin (Produção/Local): ${activePass}`);
+    console.log(`🔓 Acesso Local (localhost): Você também pode usar a senha 'admin'`);
+
     console.log(`\n💡 Pressione Ctrl+C para parar o servidor\n`);
 });
