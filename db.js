@@ -7,12 +7,12 @@ let dbConfig = {
     connectionLimit: 30,
     queueLimit: 0,
     enableKeepAlive: true,
-    keepAliveInitialDelay: 0
-};
+    keepAliveInitialDelay: 0,
+    ssl: { rejectUnauthorized: false } // Required for Railway Cloud DB
 
-if (process.env.DATABASE_URL) {
-    console.log('Usando DATABASE_URL para conexão');
-    dbConfig.uri = process.env.DATABASE_URL;
+if(process.env.DATABASE_URL) {
+        console.log('Usando DATABASE_URL para conexão');
+dbConfig.uri = process.env.DATABASE_URL;
 } else {
     dbConfig.host = process.env.MYSQLHOST || process.env.DB_HOST || 'localhost';
     dbConfig.user = process.env.MYSQLUSER || process.env.DB_USER || 'root';
