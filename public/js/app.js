@@ -4,7 +4,9 @@
 
 // Configuração da API
 // Em produção (Railway), usa o caminho relativo. Localmente, funciona igual se servido pelo mesmo host.
-const API_URL = '/api';
+// Configuração da API
+// Em produção (Railway), usa o caminho relativo. Localmente, funciona igual se servido pelo mesmo host.
+window.API_URL = '/api'; // Expose globally to ensure access in other scripts of the same page
 let topicos = [];
 let tags = [];
 

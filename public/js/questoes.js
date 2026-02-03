@@ -31,7 +31,7 @@ async function filtrarQuestoes() {
 
     } catch (error) {
         console.error('Erro ao carregar questões:', error);
-        mostrarErro('Erro ao carregar questões');
+        mostrarErro('Erro ao carregar questões: ' + (error.message || error));
     }
 }
 
