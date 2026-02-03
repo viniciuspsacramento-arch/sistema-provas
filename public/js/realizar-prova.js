@@ -86,9 +86,11 @@ async function iniciarProva(provaId, nomeAlunoParam = null, matriculaParam = nul
         return;
     }
 
+    /* Confirmação removida conforme solicitado
     if (!confirm(`Iniciar prova como "${nomeAluno}"?\n\nAVISO: A prova possui proteções anti-cópia. Trocas de aba serão registradas.`)) {
         return;
     }
+    */
 
     try {
         // Carregar prova
