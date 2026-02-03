@@ -2,7 +2,9 @@
 // CONFIGURAÇÃO E ESTADO GLOBAL
 // ============================================
 
-const API_URL = 'http://localhost:3000/api';
+// Configuração da API
+// Em produção (Railway), usa o caminho relativo. Localmente, funciona igual se servido pelo mesmo host.
+const API_URL = '/api';
 let topicos = [];
 let tags = [];
 
