@@ -778,17 +778,24 @@ app.post('/api/tentativas/:id/responder', async (req, res) => {
             [id, questao_id]
         );
 
+        // Verificar se a alternativa é correta (substitui Trigger)
+        let correta = false;
+        if (alternativa_id) {
+            const [alt] = await promisePool.query('SELECT correta FROM alternativas WHERE id = ?', [alternativa_id]);
+            if (alt.length > 0) correta = alt[0].correta === 1;
+        }
+
         if (existing.length > 0) {
             // Atualizar resposta existente
             await promisePool.query(
-                'UPDATE respostas SET alternativa_id = ?, resposta_texto = ?, respondido_em = NOW() WHERE id = ?',
-                [alternativa_id, resposta_texto, existing[0].id]
+                'UPDATE respostas SET alternativa_id = ?, resposta_texto = ?, correta = ?, respondido_em = NOW() WHERE id = ?',
+                [alternativa_id, resposta_texto, correta, existing[0].id]
             );
         } else {
             // Inserir nova resposta
             await promisePool.query(
-                'INSERT INTO respostas (tentativa_id, questao_id, alternativa_id, resposta_texto) VALUES (?, ?, ?, ?)',
-                [id, questao_id, alternativa_id, resposta_texto]
+                'INSERT INTO respostas (tentativa_id, questao_id, alternativa_id, resposta_texto, correta) VALUES (?, ?, ?, ?, ?)',
+                [id, questao_id, alternativa_id, resposta_texto, correta]
             );
         }
 
@@ -828,8 +835,40 @@ app.post('/api/tentativas/:id/finalizar', async (req, res) => {
             [tempo_total, id]
         );
 
-        // Calcular pontuação
-        await promisePool.query('CALL calcular_pontuacao(?)', [id]);
+        // 0. Correção preventiva: Garantir que 'correta' está preenchido (caso trigger tenha falhado)
+        await promisePool.query(`
+            UPDATE respostas r 
+            JOIN alternativas a ON r.alternativa_id = a.id 
+            SET r.correta = a.correta 
+            WHERE r.tentativa_id = ?
+        `, [id]);
+
+        // Calcular pontuação via JS (substitui Procedure)
+        // 1. Contar questões da prova
+        const [totalQ] = await promisePool.query(`
+            SELECT COUNT(*) as total 
+            FROM provas_questoes pq 
+            JOIN tentativas t ON t.prova_id = pq.prova_id 
+            WHERE t.id = ?
+        `, [id]);
+
+        // 2. Contar acertos
+        const [acertos] = await promisePool.query(`
+            SELECT COUNT(*) as total 
+            FROM respostas 
+            WHERE tentativa_id = ? AND correta = 1
+        `, [id]);
+
+        const totalQuestoes = totalQ[0].total;
+        const totalAcertos = acertos[0].total;
+        let pontuacao = 0;
+
+        if (totalQuestoes > 0) {
+            pontuacao = (totalAcertos / totalQuestoes) * 100;
+        }
+
+        // 3. Atualizar pontuação na tentativa
+        await promisePool.query('UPDATE tentativas SET pontuacao = ? WHERE id = ?', [pontuacao, id]);
 
         res.json({ message: 'Prova finalizada com sucesso' });
     } catch (error) {
