@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banco de Questões de Estatística</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <!-- KaTeX for Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+        integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vniwctQqWmjS97"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05"
+        crossorigin="anonymous"></script>
+
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <span class="logo-icon">📊</span>
+                <div>
+                    <h1>Banco de Questões</h1>
+                    <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">Estatística</p>
+                </div>
+            </div>
+
+            <nav id="mainNav">
+                <button class="nav-btn active" data-page="dashboard">
+                    <span>📈</span> Dashboard
+                </button>
+                <button class="nav-btn" data-page="questoes">
+                    <span>📝</span> Questões
+                </button>
+                <button class="nav-btn" data-page="provas">
+                    <span>📋</span> Provas
+                </button>
+                <button class="nav-btn" data-page="realizar-prova">
+                    <span>✍️</span> Realizar Prova
+                </button>
+                <button class="nav-btn" data-page="historico">
+                    <span>📊</span> Histórico
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="container">
+        <!-- Página: Dashboard -->
+        <div id="page-dashboard" class="page active">
+            <h2 class="mb-3">Dashboard</h2>
+
+            <div class="stats-grid" id="statsGrid">
+                <!-- Stats serão carregados dinamicamente -->
+            </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Questões por Tópico</h3>
+                    </div>
+                    <div id="questoesPorTopico">
+                        <!-- Carregado dinamicamente -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Top Alunos</h3>
+                    </div>
+                    <div id="topAlunos">
+                        <!-- Carregado dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Página: Questões -->
+        <div id="page-questoes" class="page hidden">
+            <div class="flex-between mb-3">
+                <h2>Gerenciar Questões</h2>
+                <button class="btn btn-primary" onclick="abrirModalNovaQuestao()">
+                    <span>➕</span> Nova Questão
+                </button>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-3">
+                <div class="grid grid-4">
+                    <div class="form-group">
+                        <label class="form-label">Tópico</label>
+                        <select id="filtroTopico" class="form-select" onchange="filtrarQuestoes()">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Dificuldade</label>
+                        <select id="filtroDificuldade" class="form-select" onchange="filtrarQuestoes()">
+                            <option value="">Todas</option>
+                            <option value="facil">Fácil</option>
+                            <option value="medio">Médio</option>
+                            <option value="dificil">Difícil</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo</label>
+                        <select id="filtroTipo" class="form-select" onchange="filtrarQuestoes()">
+                            <option value="">Todos</option>
+                            <option value="multipla_escolha">Múltipla Escolha</option>
+                            <option value="verdadeiro_falso">Verdadeiro/Falso</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Questões -->
+            <div id="listaQuestoes" class="grid grid-2">
+                <!-- Questões carregadas dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Página: Provas -->
+        <div id="page-provas" class="page hidden">
+            <div class="flex-between mb-3">
+                <h2>Gerenciar Provas</h2>
+                <div class="flex gap-2">
+                    <button class="btn btn-secondary" onclick="abrirModalGerarProva()">
+                        <span>🎲</span> Gerar Automaticamente
+                    </button>
+                    <button class="btn btn-primary" onclick="abrirModalNovaProva()">
+                        <span>➕</span> Nova Prova
+                    </button>
+                </div>
+            </div>
+
+            <div id="listaProvas" class="grid grid-2">
+                <!-- Provas carregadas dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Página: Realizar Prova -->
+        <div id="page-realizar-prova" class="page hidden">
+            <div id="selecionarProva">
+                <h2 class="mb-3">Selecionar Prova</h2>
+
+                <div class="card mb-3">
+                    <div class="form-group">
+                        <label class="form-label">Seu Nome</label>
+                        <input type="text" id="nomeAluno" class="form-input" placeholder="Digite seu nome completo">
+                    </div>
+                </div>
+
+                <div id="listaProvasRealizar" class="grid grid-2">
+                    <!-- Provas disponíveis -->
+                </div>
+            </div>
+
+            <div id="realizandoProva" class="hidden">
+                <!-- Interface da prova será carregada aqui -->
+            </div>
+        </div>
+
+        <!-- Página: Histórico -->
+        <div id="page-historico" class="page hidden">
+            <h2 class="mb-3">Histórico de Tentativas</h2>
+
+            <div class="card mb-3">
+                <div class="form-group">
+                    <label class="form-label">Buscar por Nome</label>
+                    <input type="text" id="buscarAluno" class="form-input" placeholder="Nome do aluno"
+                        onkeyup="filtrarHistorico()">
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Aluno</th>
+                                <th>Prova</th>
+                                <th>Data</th>
+                                <th>Pontuação</th>
+                                <th>Trocas de Aba</th>
+                                <th>Tempo</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaHistorico">
+                            <!-- Histórico carregado dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Nova Questão -->
+    <div id="modalQuestao" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Nova Questão</h3>
+                <button class="modal-close" onclick="fecharModal('modalQuestao')">&times;</button>
+            </div>
+
+            <form id="formQuestao" onsubmit="salvarQuestao(event)">
+                <div class="form-group">
+                    <label class="form-label">Tópico</label>
+                    <select id="questaoTopico" class="form-select" required>
+                        <!-- Carregado dinamicamente -->
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="questaoUsaImagem" onchange="toggleEnunciadoImagem()">
+                        Usar imagem para o enunciado (recomendado para evitar cópia)
+                    </label>
+                </div>
+
+                <div class="form-group" id="grupoEnunciadoTexto">
+                    <label class="form-label">Enunciado</label>
+                    <textarea id="questaoEnunciado" class="form-textarea" rows="3"></textarea>
+                </div>
+
+                <div class="form-group hidden" id="grupoEnunciadoImagem">
+                    <label class="form-label">Imagem do Enunciado</label>
+                    <label for="questaoImagemFile" class="file-upload-btn">
+                        <span>📁</span> Selecionar Imagem
+                    </label>
+                    <input type="file" id="questaoImagemFile" class="form-file" accept="image/*"
+                        onchange="previewImagem(this, 'previewEnunciado')">
+                    <div id="previewEnunciado" class="image-preview hidden"></div>
+                </div>
+
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Dificuldade</label>
+                        <select id="questaoDificuldade" class="form-select" required>
+                            <option value="facil">Fácil</option>
+                            <option value="medio">Médio</option>
+                            <option value="dificil">Difícil</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tipo</label>
+                        <select id="questaoTipo" class="form-select" required>
+                            <option value="multipla_escolha">Múltipla Escolha</option>
+                            <option value="verdadeiro_falso">Verdadeiro/Falso</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Alternativas</label>
+                    <div id="alternativasContainer">
+                        <!-- Alternativas adicionadas dinamicamente -->
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm mt-2" onclick="adicionarAlternativa()">
+                        <span>➕</span> Adicionar Alternativa
+                    </button>
+                </div>
+
+                <div class="flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary">Salvar Questão</button>
+                    <button type="button" class="btn btn-secondary"
+                        onclick="fecharModal('modalQuestao')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Nova Prova -->
+    <div id="modalProva" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalProvaTitle">Nova Prova</h3>
+                <button class="modal-close" onclick="fecharModal('modalProva')">&times;</button>
+            </div>
+
+            <form id="formProva" onsubmit="salvarProva(event)">
+                <input type="hidden" id="provaId">
+                <div class="form-group">
+                    <label class="form-label">Título</label>
+                    <input type="text" id="provaTitulo" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Título Público (Opcional - Exibido para o aluno)</label>
+                    <input type="text" id="provaTituloPublico" class="form-input"
+                        placeholder="Ex: Prova de Estatística">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Descrição</label>
+                    <textarea id="provaDescricao" class="form-textarea" rows="2"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tempo Limite (minutos, deixe vazio para sem limite)</label>
+                    <input type="number" id="provaTempoLimite" class="form-input" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Selecionar Questões</label>
+                    <div id="questoesDisponiveis" style="max-height: 300px; overflow-y: auto;">
+                        <!-- Questões carregadas dinamicamente -->
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Questões Selecionadas (Arraste ou use as setas para reordenar)</label>
+                    <div id="questoesSelecionadasLista" class="selected-questions-list">
+                        <p class="text-muted"
+                            style="padding: 1rem; text-align: center; border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
+                            Nenhuma questão selecionada</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary">Salvar Prova</button>
+                    <button type="button" class="btn btn-secondary"
+                        onclick="fecharModal('modalProva')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Gerar Prova Automaticamente -->
+    <div id="modalGerarProva" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Gerar Prova Automaticamente</h3>
+                <button class="modal-close" onclick="fecharModal('modalGerarProva')">&times;</button>
+            </div>
+
+            <form id="formGerarProva" onsubmit="gerarProva(event)">
+                <div class="form-group">
+                    <label class="form-label">Título</label>
+                    <input type="text" id="gerarProvaTitulo" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Título Público (Opcional - Exibido para o aluno)</label>
+                    <input type="text" id="gerarProvaTituloPublico" class="form-input"
+                        placeholder="Ex: Prova de Estatística">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Descrição</label>
+                    <textarea id="gerarProvaDescricao" class="form-textarea" rows="2"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tempo Limite (minutos)</label>
+                    <input type="number" id="gerarProvaTempoLimite" class="form-input" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tópico</label>
+                    <select id="gerarProvaTopico" class="form-select">
+                        <option value="">Qualquer tópico</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Dificuldade</label>
+                    <select id="gerarProvaDificuldade" class="form-select">
+                        <option value="">Qualquer dificuldade</option>
+                        <option value="facil">Fácil</option>
+                        <option value="medio">Médio</option>
+                        <option value="dificil">Difícil</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Quantidade de Questões</label>
+                    <input type="number" id="gerarProvaQuantidade" class="form-input" value="10" min="1" required>
+                </div>
+
+                <div class="flex gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary">Gerar Prova</button>
+                    <button type="button" class="btn btn-secondary"
+                        onclick="fecharModal('modalGerarProva')">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Resultado da Prova -->
+    <div id="modalResultado" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Resultado da Prova</h3>
+                <button class="modal-close" onclick="fecharModal('modalResultado')">&times;</button>
+            </div>
+
+            <div id="resultadoContent">
+                <!-- Resultado carregado dinamicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/app.js"></script>
+    <script src="/js/questoes.js"></script>
+    <script src="/js/provas.js"></script>
+    <script src="/js/realizar-prova.js"></script>
+</body>
+
+</html>

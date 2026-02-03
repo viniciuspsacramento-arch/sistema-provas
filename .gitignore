@@ -1,0 +1,5 @@
+node_modules/
+.env
+.DS_Store
+PROJETO_PARA_DRIVE.zip
+database/dados_completos.sql
